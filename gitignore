@@ -1,0 +1,7 @@
+# never commit keys or secrets
+pw_service-account.json
+*.json
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
+.venv/
