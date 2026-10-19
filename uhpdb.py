@@ -31,7 +31,7 @@ def secret(name: str, default=None):
 
 
 APP_TITLE = "Paywall views & clicks"
-APP_SUB = "Abover App Version 2.0.0.37 · unique users"
+APP_SUB = "Above App Version 2.0.0.37 · unique users"
 SHEET_URL = (secret("sheet_url") or os.environ.get("PAYWALL_SHEET_URL")
              or "https://docs.google.com/spreadsheets/d/PASTE_SHEET_ID/edit#gid=0")
 SERVICE_ACCOUNT_JSON = Path(__file__).with_name("pw_service-account.json")
