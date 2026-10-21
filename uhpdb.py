@@ -299,6 +299,7 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
                          "Row 1 must be the export's header row.")
     cols = REQUIRED + (["Magzine"] if "Magzine" in raw.columns else [])
     df = raw[cols].copy()
+    df["sheet_row"] = np.arange(len(df)) + 2          # row number in the Google Sheet (row 1 = header)
     df["date"] = parse_dates(df["event_date_ist"])
     df = df.dropna(subset=["date"])
     df["users"] = pd.to_numeric(df["users"].astype(str).str.replace(",", "", regex=False),
@@ -624,7 +625,7 @@ def render_trends(d: pd.DataFrame, dc: pd.DataFrame, days: pd.DatetimeIndex, end
               None if len(ctr_daily.dropna()) < 2
               else f"{(ctr_daily.iloc[-1] - ctr_daily.iloc[-2]) * 100:+.2f} pp DoD")
     k4.metric("Last day in range", f"{end:%d %b}")
-    
+
     dod_bars(d, days, "View", "Paywall views — day on day", "bars_view", daily_tot["View"])
     dod_bars(d, days, "Click", "Paywall clicks — day on day", "bars_click", daily_tot["Click"])
     st.caption(ZOOM_HINT)
@@ -773,7 +774,13 @@ def live_status(source: str):
             st.caption(f"Couldn't check the sheet just now: {e}")
 
 
-dupes = df.duplicated(subset=REQUIRED[:-1]).sum()
+# ---------------------------------------------------------------- repeated rows
+# A repeat = same parsed date + event_type + every filter column (Magzine included).
+KEY = ["date", "event_type", *[c for c in DIMS if c in df.columns]]
+rep = df[df.duplicated(subset=KEY, keep=False)].sort_values([*KEY, "sheet_row"])
+dupes = int(df.duplicated(subset=KEY).sum())
+df = df.drop_duplicates(subset=KEY, keep="last")    # newest copy wins, never double-counted
+
 top = st.columns([3, 1.6, 1])
 top[0].caption(f"{len(df):,} rows · {df['date'].min():%d %b %Y} to {df['date'].max():%d %b %Y}")
 with top[1]:
@@ -782,8 +789,11 @@ if top[2].button("Refresh now", **STRETCH):
     load.clear()
     st.rerun()
 if dupes:
-    st.warning(f"{dupes:,} rows repeat an earlier row exactly — a day may have been pasted twice, "
-               "which double-counts it. Check the sheet.")
+    st.warning(f"{dupes:,} rows repeat an earlier row for the same day and slice. Only the last copy "
+               "is used, so nothing is double-counted. Delete the older copy in the sheet.")
+    with st.expander("Show repeated rows"):
+        st.dataframe(rep[["sheet_row", "event_date_ist", *KEY[1:], "users"]],
+                     hide_index=True, **STRETCH)
 
 tab = st.radio("View", [TAB_TRENDS, TAB_WOW], horizontal=True, key="tab", label_visibility="collapsed")
 
