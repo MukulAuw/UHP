@@ -1,0 +1,20 @@
+name: Keep Streamlit awake
+
+on:
+  schedule:
+    - cron: "17 */4 * * *"   # every 4 h (UTC); off the hour to dodge GitHub's busy :00 slot
+  workflow_dispatch:          # "Run workflow" button for a manual test
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install playwright==1.47.0 && python -m playwright install --with-deps chromium
+      - run: python scripts/wake.py
+        env:
+          APP_URLS: ${{ vars.APP_URLS }}
